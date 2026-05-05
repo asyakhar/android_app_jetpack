@@ -41,7 +41,19 @@ class BrokerViewModel : ViewModel() {
             }
         }
     }
-
+    fun register(username: String, email: String, password: String) {
+        viewModelScope.launch {
+            try {
+                api.register(username, email, password)
+                _isLoggedIn.value = true
+                _username.value = username
+                loadData()
+                startWebSocket()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
     fun loadData() {
         viewModelScope.launch {
             try {
@@ -127,4 +139,5 @@ class BrokerViewModel : ViewModel() {
             }
         }
     }
+
 }

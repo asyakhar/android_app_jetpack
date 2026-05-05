@@ -104,4 +104,17 @@ class ApiClient {
         }.body()
         return response.data
     }
+    suspend fun register(username: String, email: String, password: String): LoginResponse {
+        val response = client.post("$baseUrl/auth/register") {
+            contentType(ContentType.Application.Json)
+            setBody(mapOf(
+                "username" to username,
+                "email" to email,
+                "password" to password
+            ))
+        }
+        val loginResponse: LoginResponse = response.body()
+        authToken = loginResponse.token
+        return loginResponse
+    }
 }

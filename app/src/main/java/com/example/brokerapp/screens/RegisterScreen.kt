@@ -17,13 +17,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun LoginScreen(
+fun RegisterScreen(
     username: String,
+    email: String,
     password: String,
     onUsernameChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onLoginClick: () -> Unit,
-    onSwitchToRegister: () -> Unit   // ← НОВЫЙ ПАРАМЕТР
+    onRegisterClick: () -> Unit,
+    onSwitchToLogin: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -47,9 +49,7 @@ fun LoginScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 Column(
@@ -68,11 +68,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text(
-                        "Вход в терминал",
-                        fontSize = 14.sp,
-                        color = Color.Gray
-                    )
+                    Text("Регистрация", fontSize = 14.sp, color = Color.Gray)
 
                     Spacer(modifier = Modifier.height(32.dp))
 
@@ -86,7 +82,19 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = onEmailChange,
+                        label = { Text("Email") },
+                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedTextField(
                         value = password,
@@ -102,25 +110,21 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = onLoginClick,
+                        onClick = onRegisterClick,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                        Text("Зарегистрироваться", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
 
-                    // ↓↓↓ ВОТ СЮДА — после кнопки "Войти", внутри Card ↓↓↓
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    TextButton(onClick = onSwitchToRegister) {
-                        Text("Нет аккаунта? Зарегистрироваться", color = MaterialTheme.colorScheme.primary)
+                    TextButton(onClick = onSwitchToLogin) {
+                        Text("Уже есть аккаунт? Войти", color = MaterialTheme.colorScheme.primary)
                     }
-                    // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО БЛОКА ↑↑↑
                 }
             }
         }
