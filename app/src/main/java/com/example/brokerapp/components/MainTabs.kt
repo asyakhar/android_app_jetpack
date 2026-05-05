@@ -111,7 +111,7 @@ fun MainTabs(
 
         when (selectedTab) {
             0 -> MarketScreen(stocks, balance, portfolio, onBuyClick, onSellClick)
-            1 -> PortfolioScreen(username)
+            1 -> PortfolioScreen(username, portfolio) // ДОБАВИЛИ portfolio сюда!
             2 -> ProfileScreen(username, onLogoutClick)
         }
     }

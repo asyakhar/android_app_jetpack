@@ -22,14 +22,10 @@ import java.text.NumberFormat
 import java.util.*
 
 @Composable
-fun PortfolioScreen(username: String) {
-    val portfolio = remember {
-        mutableStateListOf(
-            PortfolioItem(Stock("AAPL", "Apple Inc.", 175.50, 2.5), 5),
-            PortfolioItem(Stock("GOOGL", "Alphabet Inc.", 142.30, 1.2), 3),
-            PortfolioItem(Stock("MSFT", "Microsoft Corp.", 380.20, 0.8), 2)
-        )
-    }
+fun PortfolioScreen(
+    username: String,
+    portfolio: List<PortfolioItem>
+) {
 
     val totalValue = portfolio.sumOf { it.stock.price * it.quantity }
 

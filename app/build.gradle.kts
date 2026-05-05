@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    kotlin("android")
+    kotlin("plugin.serialization") version "2.0.21"
 }
 
 android {
@@ -31,12 +33,15 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         compose = true
     }
+}
+kotlin {
+    jvmToolchain(17)
 }
 
 dependencies {
@@ -58,7 +63,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.ktor:ktor-client-core:2.3.7")
     implementation("io.ktor:ktor-client-cio:2.3.7")
-
+    implementation("io.ktor:ktor-client-websockets:2.3.7")
     implementation("io.ktor:ktor-client-content-negotiation:2.3.7")
     implementation("com.patrykandpatrick.vico:compose:2.0.0-alpha.22")
     implementation("com.patrykandpatrick.vico:compose-m3:2.0.0-alpha.22")
