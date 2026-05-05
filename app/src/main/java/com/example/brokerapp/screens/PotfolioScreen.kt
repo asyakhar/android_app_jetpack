@@ -17,7 +17,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.brokerapp.models.PortfolioItem
-import com.example.brokerapp.models.Stock
 import java.text.NumberFormat
 import java.util.*
 
@@ -26,7 +25,6 @@ fun PortfolioScreen(
     username: String,
     portfolio: List<PortfolioItem>
 ) {
-
     val totalValue = portfolio.sumOf { it.stock.price * it.quantity }
 
     LazyColumn(

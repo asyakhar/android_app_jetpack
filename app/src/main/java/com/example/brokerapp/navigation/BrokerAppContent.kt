@@ -21,6 +21,8 @@ fun BrokerAppContent(modifier: Modifier = Modifier) {
     val balance by viewModel.balance.collectAsState()
     val portfolio by viewModel.portfolio.collectAsState()
 
+    val stockHistory by viewModel.stockHistory.collectAsState()
+
     // Локальные состояния только для UI-инпутов
     var usernameInput by remember { mutableStateOf("") }
     var passwordInput by remember { mutableStateOf("") }
@@ -54,6 +56,8 @@ fun BrokerAppContent(modifier: Modifier = Modifier) {
                 stocks = stocks,
                 balance = balance,
                 portfolio = portfolio,
+                stockHistory = stockHistory,
+                onLoadHistory = { symbol -> viewModel.loadHistoryIfNeed(symbol) },
                 onBuyClick = { stock -> viewModel.buyStock(stock) },
                 onSellClick = { stock -> viewModel.sellStock(stock) }
             )

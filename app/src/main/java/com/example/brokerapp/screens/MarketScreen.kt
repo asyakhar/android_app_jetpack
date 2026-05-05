@@ -18,16 +18,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.brokerapp.models.PortfolioItem
+import com.example.brokerapp.models.PriceHistoryCandle
 import com.example.brokerapp.models.Stock
-import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.*
+import com.patrykandpatrick.vico.compose.chart.Chart
+import com.patrykandpatrick.vico.compose.chart.line.lineChart
+import com.patrykandpatrick.vico.core.entry.FloatEntry
+import com.patrykandpatrick.vico.core.entry.entryModelOf
 
 @Composable
 fun MarketScreen(
     stocks: List<Stock>,
     balance: Double,
     portfolio: List<PortfolioItem>,
+    stockHistory: Map<String, List<PriceHistoryCandle>>,
+    onLoadHistory: (String) -> Unit,
     onBuyClick: (Stock) -> Unit,
     onSellClick: (Stock) -> Unit
 ) {
@@ -100,6 +106,8 @@ fun MarketScreen(
         items(stocks) { stock ->
             ModernStockCard(
                 stock = stock,
+                history = stockHistory[stock.symbol], // ПЕРЕДАЕМ ИСТОРИЮ
+                onExpand = { onLoadHistory(stock.symbol) }, // ПЕРЕДАЕМ ЗАПРОС
                 onBuyClick = { onBuyClick(stock) },
                 onSellClick = { onSellClick(stock) }
             )
@@ -118,6 +126,8 @@ fun StatChip(label: String, value: String) {
 @Composable
 fun ModernStockCard(
     stock: Stock,
+    history: List<PriceHistoryCandle>?, // ДОБАВЛЕНО
+    onExpand: () -> Unit,               // ДОБАВЛЕНО
     onBuyClick: () -> Unit,
     onSellClick: () -> Unit
 ) {
@@ -127,86 +137,48 @@ fun ModernStockCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded },
+            .clickable {
+                expanded = !expanded
+                if (expanded) onExpand() // ТРИГГЕРИМ ЗАГРУЗКУ ПРИ КЛИКЕ
+            },
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            // ... ВЕРХНЯЯ ЧАСТЬ КАРТОЧКИ (Иконка, тикер, цена) ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ...
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // ... (тут твой старый код отрисовки иконки и названия) ...
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            stock.symbol.take(1),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                        Text(stock.symbol.take(1), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
                     }
-
                     Spacer(modifier = Modifier.width(12.dp))
-
                     Column {
-                        Text(
-                            stock.symbol,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 16.sp
-                        )
-                        Text(
-                            stock.name,
-                            fontSize = 12.sp,
-                            color = Color.Gray,
-                            maxLines = 1
-                        )
+                        Text(stock.symbol, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        Text(stock.name, fontSize = 12.sp, color = Color.Gray, maxLines = 1)
                     }
                 }
-
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        NumberFormat.getCurrencyInstance(Locale.US).format(stock.price),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        Icon(
-                            if (stock.changePercent >= 0) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = changeColor
-                        )
-                        Text(
-                            String.format("%+.2f%%", stock.changePercent),
-                            color = changeColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                    Text(java.text.NumberFormat.getCurrencyInstance(java.util.Locale.US).format(stock.price), fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                        Icon(if (stock.changePercent >= 0) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(14.dp), tint = changeColor)
+                        Text(String.format("%+.2f%%", stock.changePercent), color = changeColor, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                     }
                 }
             }
 
-            // Expandable actions
+            // РАСКРЫВАЮЩАЯСЯ ЧАСТЬ С ГРАФИКОМ
             androidx.compose.animation.AnimatedVisibility(
                 visible = expanded,
                 enter = androidx.compose.animation.fadeIn(),
@@ -217,6 +189,26 @@ fun ModernStockCard(
                     Divider(color = Color.Gray.copy(alpha = 0.2f))
                     Spacer(modifier = Modifier.height(12.dp))
 
+                    // ОТРИСОВКА ГРАФИКА
+                    if (history != null && history.isNotEmpty()) {
+                        val chartEntries = history.mapIndexed { index, candle ->
+                            FloatEntry(x = index.toFloat(), y = candle.close.toFloat())
+                        }
+
+                        Chart(
+                            chart = lineChart(),
+                            model = entryModelOf(chartEntries),
+                            modifier = Modifier.fillMaxWidth().height(150.dp).padding(vertical = 8.dp)
+                        )
+                    } else {
+                        Box(modifier = Modifier.fillMaxWidth().height(150.dp), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // КНОПКИ
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -225,9 +217,7 @@ fun ModernStockCard(
                             onClick = onBuyClick,
                             modifier = Modifier.weight(1f).height(44.dp),
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF00C853)
-                            )
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853))
                         ) {
                             Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
@@ -238,12 +228,8 @@ fun ModernStockCard(
                             onClick = onSellClick,
                             modifier = Modifier.weight(1f).height(44.dp),
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(0xFFD32F2F)
-                            ),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFD32F2F))
-                            )
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFD32F2F)))
                         ) {
                             Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))

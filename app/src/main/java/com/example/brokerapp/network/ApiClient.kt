@@ -97,4 +97,11 @@ class ApiClient {
             }
         }
     }
+    suspend fun getStockHistory(symbol: String, interval: String = "1d"): List<PriceHistoryCandle> {
+        val response: PriceHistoryResponse = client.get("$baseUrl/market/stocks/$symbol/history") {
+            authHeader()
+            parameter("interval", interval)
+        }.body()
+        return response.data
+    }
 }

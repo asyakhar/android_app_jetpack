@@ -28,6 +28,8 @@ fun MainTabs(
     stocks: List<Stock>,
     balance: Double,
     portfolio: List<PortfolioItem>,
+    stockHistory: Map<String, List<com.example.brokerapp.models.PriceHistoryCandle>>,
+    onLoadHistory: (String) -> Unit,
     onBuyClick: (Stock) -> Unit,
     onSellClick: (Stock) -> Unit
 ) {
@@ -110,8 +112,8 @@ fun MainTabs(
         }
 
         when (selectedTab) {
-            0 -> MarketScreen(stocks, balance, portfolio, onBuyClick, onSellClick)
-            1 -> PortfolioScreen(username, portfolio) // ДОБАВИЛИ portfolio сюда!
+            0 -> MarketScreen(stocks, balance, portfolio, stockHistory, onLoadHistory, onBuyClick, onSellClick)
+            1 -> PortfolioScreen(username, portfolio)
             2 -> ProfileScreen(username, onLogoutClick)
         }
     }

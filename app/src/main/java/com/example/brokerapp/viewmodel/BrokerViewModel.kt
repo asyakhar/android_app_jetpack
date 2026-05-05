@@ -108,4 +108,23 @@ class BrokerViewModel : ViewModel() {
             }
         }
     }
+
+    private val _stockHistory = MutableStateFlow<Map<String, List<PriceHistoryCandle>>>(emptyMap())
+    val stockHistory = _stockHistory.asStateFlow()
+
+    fun loadHistoryIfNeed(symbol: String) {
+        // Если график уже загружен, не качаем его заново
+        if (_stockHistory.value.containsKey(symbol)) return
+
+        viewModelScope.launch {
+            try {
+                val history = api.getStockHistory(symbol)
+                val currentMap = _stockHistory.value.toMutableMap()
+                currentMap[symbol] = history
+                _stockHistory.value = currentMap
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 }

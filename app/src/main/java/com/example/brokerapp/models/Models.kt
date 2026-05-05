@@ -49,3 +49,20 @@ data class PriceUpdate(
     val symbol: String,
     val price: Double
 )
+
+@Serializable
+data class PriceHistoryCandle(
+    val timestamp: String,
+    val open: Double,
+    val high: Double,
+    val low: Double,
+    val close: Double,
+    val volume: Long
+)
+
+@Serializable
+data class PriceHistoryResponse(
+    val symbol: String,
+    val interval: String,
+    val data: List<PriceHistoryCandle>
+)
