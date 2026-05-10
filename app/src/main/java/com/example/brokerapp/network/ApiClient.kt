@@ -15,7 +15,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 class ApiClient {
     // В эмуляторе Android IP 10.0.2.2 перенаправляет на localhost компьютера
-    private val baseUrl = "http://10.0.2.2:9090"
+    private val baseUrl = "http://100.69.47.75:9090"
     var authToken: String? = null
 
     val client = HttpClient(CIO) {
