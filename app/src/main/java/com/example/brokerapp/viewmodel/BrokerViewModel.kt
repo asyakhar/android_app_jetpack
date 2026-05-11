@@ -7,6 +7,7 @@ import com.example.brokerapp.network.ApiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.example.brokerapp.models.ChartTimeframe
 
 class BrokerViewModel : ViewModel() {
     val api = ApiClient()
@@ -123,60 +124,62 @@ class BrokerViewModel : ViewModel() {
     val stockHistory = _stockHistory.asStateFlow()
 
 
-    fun loadHistoryIfNeed(symbol: String) {
-        if (_stockHistory.value.containsKey(symbol)) return
-
+    fun loadHistory(symbol: String, timeframe: ChartTimeframe = ChartTimeframe.DAY_1) {
         viewModelScope.launch {
             try {
-                val history = api.getStockHistory(symbol, interval = "1m")
+                // Вычисляем from и to в секундах
+                val to = System.currentTimeMillis() / 1000
+                val from = (System.currentTimeMillis() - timeframe.durationMillis) / 1000
+
+                // Загружаем данные с бэкенда
+                val history = api.getStockHistory(symbol, from, to, timeframe.interval)
+
+                // Обновляем Map
                 val currentMap = _stockHistory.value.toMutableMap()
                 currentMap[symbol] = history
                 _stockHistory.value = currentMap
-
-                println("✅ Загружено ${history.size} свечей для $symbol")
             } catch (e: Exception) {
                 e.printStackTrace()
-                println("❌ Ошибка загрузки истории для $symbol: ${e.message}")
             }
         }
     }
-    private fun addNewPriceToHistory(symbol: String, newPrice: Double) {
-        val currentMap = _stockHistory.value.toMutableMap()
-        val currentHistory = currentMap[symbol]?.toMutableList() ?: mutableListOf()
 
-        val now = java.time.Instant.now()
-        val currentMinute: String = now.truncatedTo(java.time.temporal.ChronoUnit.MINUTES).toString()
+//    fun loadHistoryIfNeed(symbol: String) {
+//        if (_stockHistory.value.containsKey(symbol)) return
+//
+//        viewModelScope.launch {
+//            try {
+//                val history = api.getStockHistory(symbol, interval = "1m")
+//                val currentMap = _stockHistory.value.toMutableMap()
+//                currentMap[symbol] = history
+//                _stockHistory.value = currentMap
+//
+//                println("✅ Загружено ${history.size} свечей для $symbol")
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//                println("❌ Ошибка загрузки истории для $symbol: ${e.message}")
+//            }
+//        }
+//    }
+private fun addNewPriceToHistory(symbol: String, newPrice: Double) {
+    val currentMap = _stockHistory.value.toMutableMap()
 
-        // Проверяем, есть ли свеча за текущую минуту
-        val lastCandle = currentHistory.lastOrNull()
-        val isSameMinute = lastCandle?.timestamp == currentMinute
+    // Берем текущую историю. Если её еще нет (не успела загрузиться), то пока ничего не делаем
+    val currentHistory = currentMap[symbol]?.toMutableList() ?: return
+    val lastCandle = currentHistory.lastOrNull() ?: return
 
-        if (isSameMinute && lastCandle != null) {
-            // Обновляем существующую свечу
-            val updatedCandle = lastCandle.copy(
-                high = maxOf(lastCandle.high, newPrice),
-                low = minOf(lastCandle.low, newPrice),
-                close = newPrice,
-                volume = lastCandle.volume + 1
-            )
-            currentHistory[currentHistory.size - 1] = updatedCandle
-        } else {
-            // Создаём новую свечу
-            val newCandle = PriceHistoryCandle(
-                timestamp = currentMinute,
-                open = newPrice,
-                high = newPrice,
-                low = newPrice,
-                close = newPrice,
-                volume = 1
-            )
-            currentHistory.add(newCandle)
-        }
+    // Просто обновляем самую последнюю (текущую) свечу нужного таймфрейма
+    val updatedCandle = lastCandle.copy(
+        high = maxOf(lastCandle.high, newPrice),
+        low = minOf(lastCandle.low, newPrice),
+        close = newPrice
+        // open и timestamp оставляем без изменений!
+    )
 
-        // Обновляем состояние
-        currentMap[symbol] = currentHistory
-        _stockHistory.value = currentMap
+    currentHistory[currentHistory.size - 1] = updatedCandle
 
-        println("🔄 История $symbol обновлена: ${currentHistory.size} свечей")
-    }
+    // Обновляем состояние, чтобы Canvas перерисовался
+    currentMap[symbol] = currentHistory
+    _stockHistory.value = currentMap
+}
 }

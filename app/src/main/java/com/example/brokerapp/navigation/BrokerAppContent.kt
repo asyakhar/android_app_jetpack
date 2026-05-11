@@ -79,7 +79,8 @@ fun BrokerAppContent(modifier: Modifier = Modifier) {
                 balance = balance,
                 portfolio = portfolio,
                 stockHistory = stockHistory,
-                onLoadHistory = { symbol -> viewModel.loadHistoryIfNeed(symbol) },
+
+                onLoadHistory = { symbol, timeframe -> viewModel.loadHistory(symbol, timeframe) },
                 onBuyClick = { stock -> viewModel.buyStock(stock) },
                 onSellClick = { stock -> viewModel.sellStock(stock) }
             )

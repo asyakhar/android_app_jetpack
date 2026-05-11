@@ -77,6 +77,14 @@ enum class ChartInterval(val value: String, val label: String, val minutes: Long
         }
     }
 }
+
+enum class ChartTimeframe(val label: String, val durationMillis: Long, val interval: String) {
+    HOUR_1("1Ч", 60 * 60 * 1000L, "5m"),           // За 1 час (свечи по 5 мин)
+    DAY_1("1Д", 24 * 60 * 60 * 1000L, "15m"),      // За 1 день (свечи по 15 мин)
+    WEEK_1("1Н", 7 * 24 * 60 * 60 * 1000L, "1h"),  // За 1 неделю (свечи по 1 часу)
+    MONTH_1("1М", 30L * 24 * 60 * 60 * 1000L, "1d")// За 1 месяц (свечи по 1 дню)
+}
+
 @Serializable
 data class PriceHistoryResponse(
     val symbol: String,

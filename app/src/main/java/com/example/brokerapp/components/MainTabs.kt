@@ -1,5 +1,5 @@
 package com.example.brokerapp.components
-
+import com.example.brokerapp.models.ChartTimeframe
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -29,7 +29,7 @@ fun MainTabs(
     balance: Double,
     portfolio: List<PortfolioItem>,
     stockHistory: Map<String, List<com.example.brokerapp.models.PriceHistoryCandle>>,
-    onLoadHistory: (String) -> Unit,
+    onLoadHistory: (String, ChartTimeframe) -> Unit,
     onBuyClick: (Stock) -> Unit,
     onSellClick: (Stock) -> Unit
 ) {
