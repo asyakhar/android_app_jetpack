@@ -47,7 +47,11 @@ data class WsMessage(
 @Serializable
 data class PriceUpdate(
     val symbol: String,
-    val price: Double
+    val price: Double,
+    val change: Double? = null,        // опционально
+    val changePercent: Double? = null, // опционально
+    val volume: Long? = null,          // опционально
+    val timestamp: String? = null      // опционально
 )
 
 @Serializable
@@ -59,7 +63,20 @@ data class PriceHistoryCandle(
     val close: Double,
     val volume: Long
 )
+enum class ChartInterval(val value: String, val label: String, val minutes: Long) {
+    M15("15m", "15 мин", 15),
+    M30("30m", "30 мин", 30),
+    H1("1h", "1 час", 60),
+    H4("4h", "4 часа", 240),
+    D1("1d", "1 день", 1440),
+    W1("1w", "1 неделя", 10080);
 
+    companion object {
+        fun fromValue(value: String): ChartInterval {
+            return entries.find { it.value == value } ?: D1
+        }
+    }
+}
 @Serializable
 data class PriceHistoryResponse(
     val symbol: String,

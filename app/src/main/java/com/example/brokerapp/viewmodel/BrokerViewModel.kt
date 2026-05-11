@@ -98,22 +98,20 @@ class BrokerViewModel : ViewModel() {
         api.authToken = null // Сбрасываем токен
     }
 
+
     private fun startWebSocket() {
         viewModelScope.launch {
             try {
                 api.observeLivePrices { update ->
-                    // 1. Берем текущий список
+                    // 1. Обновляем цену в списке (уже есть)
                     val currentStocks = _stocks.value.toMutableList()
-                    // 2. Ищем акцию, цена которой обновилась
                     val index = currentStocks.indexOfFirst { it.symbol == update.symbol }
-
                     if (index != -1) {
-                        val oldStock = currentStocks[index]
-                        // 3. Создаем КОПИЮ с новой ценой (чтобы Compose заметил изменение)
-                        currentStocks[index] = oldStock.copy(price = update.price)
-                        // 4. Пушим обновленный список в UI
+                        currentStocks[index] = currentStocks[index].copy(price = update.price)
                         _stocks.value = currentStocks
                     }
+
+                    addNewPriceToHistory(update.symbol, update.price)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -124,20 +122,61 @@ class BrokerViewModel : ViewModel() {
     private val _stockHistory = MutableStateFlow<Map<String, List<PriceHistoryCandle>>>(emptyMap())
     val stockHistory = _stockHistory.asStateFlow()
 
+
     fun loadHistoryIfNeed(symbol: String) {
-        // Если график уже загружен, не качаем его заново
         if (_stockHistory.value.containsKey(symbol)) return
 
         viewModelScope.launch {
             try {
-                val history = api.getStockHistory(symbol)
+                val history = api.getStockHistory(symbol, interval = "1m")
                 val currentMap = _stockHistory.value.toMutableMap()
                 currentMap[symbol] = history
                 _stockHistory.value = currentMap
+
+                println("✅ Загружено ${history.size} свечей для $symbol")
             } catch (e: Exception) {
                 e.printStackTrace()
+                println("❌ Ошибка загрузки истории для $symbol: ${e.message}")
             }
         }
     }
+    private fun addNewPriceToHistory(symbol: String, newPrice: Double) {
+        val currentMap = _stockHistory.value.toMutableMap()
+        val currentHistory = currentMap[symbol]?.toMutableList() ?: mutableListOf()
 
+        val now = java.time.Instant.now()
+        val currentMinute: String = now.truncatedTo(java.time.temporal.ChronoUnit.MINUTES).toString()
+
+        // Проверяем, есть ли свеча за текущую минуту
+        val lastCandle = currentHistory.lastOrNull()
+        val isSameMinute = lastCandle?.timestamp == currentMinute
+
+        if (isSameMinute && lastCandle != null) {
+            // Обновляем существующую свечу
+            val updatedCandle = lastCandle.copy(
+                high = maxOf(lastCandle.high, newPrice),
+                low = minOf(lastCandle.low, newPrice),
+                close = newPrice,
+                volume = lastCandle.volume + 1
+            )
+            currentHistory[currentHistory.size - 1] = updatedCandle
+        } else {
+            // Создаём новую свечу
+            val newCandle = PriceHistoryCandle(
+                timestamp = currentMinute,
+                open = newPrice,
+                high = newPrice,
+                low = newPrice,
+                close = newPrice,
+                volume = 1
+            )
+            currentHistory.add(newCandle)
+        }
+
+        // Обновляем состояние
+        currentMap[symbol] = currentHistory
+        _stockHistory.value = currentMap
+
+        println("🔄 История $symbol обновлена: ${currentHistory.size} свечей")
+    }
 }
