@@ -77,4 +77,5 @@ dependencies {
     implementation("com.patrykandpatrick.vico:compose:1.15.0")
     implementation("com.patrykandpatrick.vico:compose-m3:1.15.0")
     implementation("com.patrykandpatrick.vico:core:1.15.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
 }
