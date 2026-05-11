@@ -22,7 +22,6 @@ import com.example.brokerapp.models.PriceHistoryCandle
 import com.example.brokerapp.models.Stock
 import java.text.NumberFormat
 import java.util.*
-import com.example.brokerapp.models.ChartTimeframe
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -33,7 +32,7 @@ fun MarketScreen(
     balance: Double,
     portfolio: List<PortfolioItem>,
     stockHistory: Map<String, List<PriceHistoryCandle>>,
-    onLoadHistory: (String, ChartTimeframe) -> Unit,
+    onLoadHistory: (String) -> Unit,
     onBuyClick: (Stock) -> Unit,
     onSellClick: (Stock) -> Unit
 ) {
@@ -47,7 +46,6 @@ fun MarketScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            // Современная карточка баланса
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
@@ -99,6 +97,7 @@ fun MarketScreen(
                 "Акции",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
             )
         }
@@ -107,8 +106,7 @@ fun MarketScreen(
             ModernStockCard(
                 stock = stock,
                 history = stockHistory[stock.symbol],
-                // Теперь передаем и символ, и таймфрейм
-                onLoadHistory = { timeframe -> onLoadHistory(stock.symbol, timeframe) },
+                onLoadHistory = { onLoadHistory(stock.symbol) },
                 onBuyClick = { onBuyClick(stock) },
                 onSellClick = { onSellClick(stock) }
             )
@@ -127,34 +125,44 @@ fun StatChip(label: String, value: String) {
 @Composable
 fun ModernStockCard(
     stock: Stock,
-    history: List<PriceHistoryCandle>?, // ДОБАВЛЕНО
-    onLoadHistory: (ChartTimeframe) -> Unit,             // ДОБАВЛЕНО
+    history: List<PriceHistoryCandle>?,
+    onLoadHistory: () -> Unit,
     onBuyClick: () -> Unit,
     onSellClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedTimeframe by remember { mutableStateOf(ChartTimeframe.DAY_1) }
+    var selectedRange by remember { mutableStateOf("1ч") } // текущий выбранный диапазон
     val changeColor = if (stock.changePercent >= 0) Color(0xFF00C853) else Color(0xFFD32F2F)
+
+    // Функция для обрезки истории в зависимости от выбранного диапазона
+    fun getFilteredHistory(): List<PriceHistoryCandle>? {
+        val fullHistory = history ?: return null
+        return when (selectedRange) {
+            "1ч" -> fullHistory.takeLast(40)      // последние 60 свечей (1 час)
+            "6ч" -> fullHistory.takeLast(100)     // последние 360 свечей (6 часов)
+            "1д" -> fullHistory                   // все свечи (за сутки)
+            else -> fullHistory.takeLast(60)
+        }
+    }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
                 expanded = !expanded
-                if (expanded) onLoadHistory(selectedTimeframe) // ТРИГГЕРИМ ЗАГРУЗКУ ПРИ КЛИКЕ
+                if (expanded) onLoadHistory()
             },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            // ... ВЕРХНЯЯ ЧАСТЬ КАРТОЧКИ (Иконка, тикер, цена) ОСТАЕТСЯ БЕЗ ИЗМЕНЕНИЙ ...
+            // Верхняя часть карточки (символ, цена и т.д.)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // ... (тут твой старый код отрисовки иконки и названия) ...
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
@@ -202,7 +210,7 @@ fun ModernStockCard(
                 }
             }
 
-            // РАСКРЫВАЮЩАЯСЯ ЧАСТЬ С ГРАФИКОМ
+            // Раскрывающаяся часть
             androidx.compose.animation.AnimatedVisibility(
                 visible = expanded,
                 enter = androidx.compose.animation.fadeIn(),
@@ -210,35 +218,32 @@ fun ModernStockCard(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(12.dp))
+                    Divider(color = Color.Gray.copy(alpha = 0.2f))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // --- ПАНЕЛЬ ВЫБОРА МАСШТАБА ---
+                    // 🔥 СЕЛЕКТОР МАСШТАБА (добавлен сюда)
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        ChartTimeframe.values().forEach { tf ->
-                            val isSelected = selectedTimeframe == tf
-                            Text(
-                                text = tf.label,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray,
-                                modifier = Modifier
-                                    .clickable {
-                                        selectedTimeframe = tf
-                                        onLoadHistory(tf) // Сразу грузим новый масштаб
-                                    }
-                                    .padding(8.dp)
-                            )
+                        ScaleButton(label = "1ч", isSelected = selectedRange == "1ч") {
+                            selectedRange = "1ч"
+                        }
+                        ScaleButton(label = "6ч", isSelected = selectedRange == "6ч") {
+                            selectedRange = "6ч"
+                        }
+                        ScaleButton(label = "1д", isSelected = selectedRange == "1д") {
+                            selectedRange = "1д"
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    // --- СВЕЧНОЙ ГРАФИК ---
-                    if (history != null && history.isNotEmpty()) {
+                    // График
+                    val displayHistory = getFilteredHistory()
+                    if (displayHistory != null && displayHistory.isNotEmpty()) {
                         CandlestickChart(
-                            history = history,
+                            history = displayHistory,
                             modifier = Modifier.fillMaxWidth().height(160.dp).padding(vertical = 8.dp)
                         )
                     } else {
@@ -249,7 +254,7 @@ fun ModernStockCard(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // КНОПКИ
+                    // Кнопки Купить/Продать
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -260,11 +265,7 @@ fun ModernStockCard(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853))
                         ) {
-                            Icon(
-                                Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Купить", fontSize = 13.sp)
                         }
@@ -273,22 +274,12 @@ fun ModernStockCard(
                             onClick = onSellClick,
                             modifier = Modifier.weight(1f).height(44.dp),
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = Color(
-                                    0xFFD32F2F
-                                )
-                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD32F2F)),
                             border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = androidx.compose.ui.graphics.SolidColor(
-                                    Color(0xFFD32F2F)
-                                )
+                                brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFD32F2F))
                             )
                         ) {
-                            Icon(
-                                Icons.Default.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Продать", fontSize = 13.sp)
                         }
@@ -296,6 +287,25 @@ fun ModernStockCard(
                 }
             }
         }
+    }
+}
+
+// 🔥 ДОБАВЬ ЭТОТ КОМПОНЕНТ (кнопка масштаба)
+@Composable
+fun ScaleButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .width(80.dp)
+            .height(36.dp),
+        shape = RoundedCornerShape(8.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+            contentColor = if (isSelected) Color.White else Color.Gray
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+    ) {
+        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Medium)
     }
 }
 @Composable
@@ -310,22 +320,19 @@ fun CandlestickChart(history: List<PriceHistoryCandle>, modifier: Modifier = Mod
         val canvasWidth = size.width
         val canvasHeight = size.height
         val candleWidth = canvasWidth / history.size.coerceAtLeast(1).toFloat()
-        val bodyWidth = candleWidth * 0.6f // Толщина свечи (оставляем зазор)
+        val bodyWidth = candleWidth * 0.6f
 
         history.forEachIndexed { index, candle ->
             val xCenter = index * candleWidth + candleWidth / 2f
 
-            // Конвертируем цены в Y-координаты (в Canvas Y растет сверху вниз, поэтому вычитаем)
             val highY = canvasHeight - ((candle.high.toFloat() - minPrice) / priceRange) * canvasHeight
             val lowY = canvasHeight - ((candle.low.toFloat() - minPrice) / priceRange) * canvasHeight
             val openY = canvasHeight - ((candle.open.toFloat() - minPrice) / priceRange) * canvasHeight
             val closeY = canvasHeight - ((candle.close.toFloat() - minPrice) / priceRange) * canvasHeight
 
-            // Растущая (зеленая) или падающая (красная) свеча
             val isBullish = candle.close >= candle.open
             val candleColor = if (isBullish) Color(0xFF00C853) else Color(0xFFD32F2F)
 
-            // 1. Рисуем тень (фитиль от High до Low)
             drawLine(
                 color = candleColor,
                 start = Offset(xCenter, highY),
@@ -333,10 +340,9 @@ fun CandlestickChart(history: List<PriceHistoryCandle>, modifier: Modifier = Mod
                 strokeWidth = 2.dp.toPx()
             )
 
-            // 2. Рисуем тело свечи (от Open до Close)
             val bodyTop = minOf(openY, closeY)
             val bodyBottom = maxOf(openY, closeY)
-            val bodyHeight = (bodyBottom - bodyTop).coerceAtLeast(1f) // Минимум 1 пиксель
+            val bodyHeight = (bodyBottom - bodyTop).coerceAtLeast(1f)
 
             drawRect(
                 color = candleColor,
@@ -346,4 +352,3 @@ fun CandlestickChart(history: List<PriceHistoryCandle>, modifier: Modifier = Mod
         }
     }
 }
-

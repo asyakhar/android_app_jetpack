@@ -25,7 +25,7 @@ fun BrokerAppContent(modifier: Modifier = Modifier) {
     var passwordInput by remember { mutableStateOf("") }
     var emailInput by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
-    var isLoginMode by remember { mutableStateOf(true) } // true = вход, false = регистрация
+    var isLoginMode by remember { mutableStateOf(true) }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (!isLoggedIn) {
@@ -79,8 +79,7 @@ fun BrokerAppContent(modifier: Modifier = Modifier) {
                 balance = balance,
                 portfolio = portfolio,
                 stockHistory = stockHistory,
-
-                onLoadHistory = { symbol, timeframe -> viewModel.loadHistory(symbol, timeframe) },
+                onLoadHistory = { symbol -> viewModel.loadHistory(symbol) },
                 onBuyClick = { stock -> viewModel.buyStock(stock) },
                 onSellClick = { stock -> viewModel.sellStock(stock) }
             )

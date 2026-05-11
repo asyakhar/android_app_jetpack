@@ -103,13 +103,33 @@ class ApiClient {
         to: Long,
         interval: String
     ): List<PriceHistoryCandle> {
+        // Конвертируем Long timestamp в ISO 8601 (ожидает бэкенд)
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+        dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+
+        val fromIso = dateFormat.format(java.util.Date(from))
+        val toIso = dateFormat.format(java.util.Date(to))
+
+        println("📊 Запрос истории: symbol=$symbol, from=$fromIso, to=$toIso, interval=$interval")
+
         val response: PriceHistoryResponse = client.get("$baseUrl/market/stocks/$symbol/history") {
             authHeader()
-            parameter("from", from)
-            parameter("to", to)
+            parameter("from", fromIso)
+            parameter("to", toIso)
             parameter("interval", interval)
         }.body()
-        return response.data
+
+        return response.data ?: emptyList()
+    }
+    suspend fun getStockHistorySimple(
+        symbol: String,
+        interval: String = "1m"
+    ): List<PriceHistoryCandle> {
+        val response: PriceHistoryResponse = client.get("$baseUrl/market/stocks/$symbol/history") {
+            authHeader()
+            parameter("interval", interval)
+        }.body()
+        return response.data ?: emptyList()
     }
     suspend fun register(username: String, email: String, password: String): LoginResponse {
         val response = client.post("$baseUrl/auth/register") {
@@ -123,5 +143,18 @@ class ApiClient {
         val loginResponse: LoginResponse = response.body()
         authToken = loginResponse.token
         return loginResponse
+    }
+    suspend fun getStockHistoryMinute(symbol: String): List<PriceHistoryCandle> {
+        println("📡 [REQUEST] GET $baseUrl/market/stocks/$symbol/history?interval=1m")
+
+        val response: PriceHistoryResponse = client.get("$baseUrl/market/stocks/$symbol/history") {
+            authHeader()
+            parameter("interval", "1m")  // жёстко 1 минута
+        }.body()
+
+        val size = response.data?.size ?: 0
+        println("📡 [RESPONSE] Получено $size свечей для $symbol")
+
+        return response.data ?: emptyList()
     }
 }

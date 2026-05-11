@@ -7,7 +7,6 @@ import com.example.brokerapp.network.ApiClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import com.example.brokerapp.models.ChartTimeframe
 
 class BrokerViewModel : ViewModel() {
     val api = ApiClient()
@@ -28,6 +27,9 @@ class BrokerViewModel : ViewModel() {
     private val _portfolio = MutableStateFlow<List<PortfolioItem>>(emptyList())
     val portfolio = _portfolio.asStateFlow()
 
+    private val _stockHistory = MutableStateFlow<Map<String, List<PriceHistoryCandle>>>(emptyMap())
+    val stockHistory = _stockHistory.asStateFlow()
+
     fun login(user: String, pass: String) {
         viewModelScope.launch {
             try {
@@ -36,12 +38,13 @@ class BrokerViewModel : ViewModel() {
                 _username.value = user
 
                 loadData()
-                startWebSocket() // <--- ЗАПУСКАЕМ ВЕБСОКЕТЫ ЗДЕСЬ
+                startWebSocket()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
+
     fun register(username: String, email: String, password: String) {
         viewModelScope.launch {
             try {
@@ -55,6 +58,7 @@ class BrokerViewModel : ViewModel() {
             }
         }
     }
+
     fun loadData() {
         viewModelScope.launch {
             try {
@@ -70,9 +74,8 @@ class BrokerViewModel : ViewModel() {
     fun buyStock(stock: Stock) {
         viewModelScope.launch {
             try {
-                // Пока покупаем по 1 штуке для простоты, потом можно добавить выбор количества
                 api.executeTrade(TradeRequest(stock.symbol, 1, "buy"))
-                loadData() // Обновляем портфель и баланс после сделки
+                loadData()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -83,7 +86,7 @@ class BrokerViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 api.executeTrade(TradeRequest(stock.symbol, 1, "sell"))
-                loadData() // Обновляем портфель и баланс после сделки
+                loadData()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -96,60 +99,19 @@ class BrokerViewModel : ViewModel() {
         _stocks.value = emptyList()
         _portfolio.value = emptyList()
         _balance.value = 0.0
-        api.authToken = null // Сбрасываем токен
+        _stockHistory.value = emptyMap()
+        api.authToken = null
     }
 
-
-    private fun startWebSocket() {
-        viewModelScope.launch {
-            try {
-                api.observeLivePrices { update ->
-                    // 1. Обновляем цену в списке (уже есть)
-                    val currentStocks = _stocks.value.toMutableList()
-                    val index = currentStocks.indexOfFirst { it.symbol == update.symbol }
-                    if (index != -1) {
-                        currentStocks[index] = currentStocks[index].copy(price = update.price)
-                        _stocks.value = currentStocks
-                    }
-
-                    addNewPriceToHistory(update.symbol, update.price)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    private val _stockHistory = MutableStateFlow<Map<String, List<PriceHistoryCandle>>>(emptyMap())
-    val stockHistory = _stockHistory.asStateFlow()
-
-
-    fun loadHistory(symbol: String, timeframe: ChartTimeframe = ChartTimeframe.DAY_1) {
-        viewModelScope.launch {
-            try {
-                // Вычисляем from и to в секундах
-                val to = System.currentTimeMillis() / 1000
-                val from = (System.currentTimeMillis() - timeframe.durationMillis) / 1000
-
-                // Загружаем данные с бэкенда
-                val history = api.getStockHistory(symbol, from, to, timeframe.interval)
-
-                // Обновляем Map
-                val currentMap = _stockHistory.value.toMutableMap()
-                currentMap[symbol] = history
-                _stockHistory.value = currentMap
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-//    fun loadHistoryIfNeed(symbol: String) {
-//        if (_stockHistory.value.containsKey(symbol)) return
-//
+//    fun loadHistory(symbol: String, timeframe: ChartTimeframe = ChartTimeframe.DAY_1) {
 //        viewModelScope.launch {
 //            try {
-//                val history = api.getStockHistory(symbol, interval = "1m")
+//                // Используем простой запрос без from/to
+//                val history = api.getStockHistorySimple(
+//                    symbol = symbol,
+//                    interval = timeframe.interval
+//                )
+//
 //                val currentMap = _stockHistory.value.toMutableMap()
 //                currentMap[symbol] = history
 //                _stockHistory.value = currentMap
@@ -161,25 +123,64 @@ class BrokerViewModel : ViewModel() {
 //            }
 //        }
 //    }
-private fun addNewPriceToHistory(symbol: String, newPrice: Double) {
-    val currentMap = _stockHistory.value.toMutableMap()
 
-    // Берем текущую историю. Если её еще нет (не успела загрузиться), то пока ничего не делаем
-    val currentHistory = currentMap[symbol]?.toMutableList() ?: return
-    val lastCandle = currentHistory.lastOrNull() ?: return
+    private fun startWebSocket() {
+        viewModelScope.launch {
+            try {
+                api.observeLivePrices { update ->
+                    // 1. Обновляем цену в списке
+                    val currentStocks = _stocks.value.toMutableList()
+                    val index = currentStocks.indexOfFirst { it.symbol == update.symbol }
+                    if (index != -1) {
+                        currentStocks[index] = currentStocks[index].copy(price = update.price)
+                        _stocks.value = currentStocks
+                    }
 
-    // Просто обновляем самую последнюю (текущую) свечу нужного таймфрейма
-    val updatedCandle = lastCandle.copy(
-        high = maxOf(lastCandle.high, newPrice),
-        low = minOf(lastCandle.low, newPrice),
-        close = newPrice
-        // open и timestamp оставляем без изменений!
-    )
+                    // 2. Обновляем последнюю свечу в истории
+                    updateLastCandle(update.symbol, update.price)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
 
-    currentHistory[currentHistory.size - 1] = updatedCandle
+    private fun updateLastCandle(symbol: String, newPrice: Double) {
+        val currentMap = _stockHistory.value.toMutableMap()
+        val currentHistory = currentMap[symbol]?.toMutableList() ?: return
+        if (currentHistory.isEmpty()) return
 
-    // Обновляем состояние, чтобы Canvas перерисовался
-    currentMap[symbol] = currentHistory
-    _stockHistory.value = currentMap
-}
+        val lastCandle = currentHistory.last()
+        val updatedCandle = lastCandle.copy(
+            high = maxOf(lastCandle.high, newPrice),
+            low = minOf(lastCandle.low, newPrice),
+            close = newPrice,
+            volume = lastCandle.volume + 1
+        )
+
+        currentHistory[currentHistory.size - 1] = updatedCandle
+        currentMap[symbol] = currentHistory
+        _stockHistory.value = currentMap
+    }
+    fun loadHistory(symbol: String) {
+        viewModelScope.launch {
+            try {
+                val history = api.getStockHistoryMinute(symbol)
+
+                val currentMap = _stockHistory.value.toMutableMap()
+                currentMap[symbol] = history
+                _stockHistory.value = currentMap
+
+                println("✅ Загружено ${history.size} свечей для $symbol")
+
+                if (history.isNotEmpty()) {
+                    println("📊 Первая свеча: ${history.first()}")
+                    println("📊 Последняя свеча: ${history.last()}")
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("❌ Ошибка: ${e.message}")
+            }
+        }
+    }
 }

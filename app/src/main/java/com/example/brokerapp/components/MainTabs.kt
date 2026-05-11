@@ -29,7 +29,7 @@ fun MainTabs(
     balance: Double,
     portfolio: List<PortfolioItem>,
     stockHistory: Map<String, List<com.example.brokerapp.models.PriceHistoryCandle>>,
-    onLoadHistory: (String, ChartTimeframe) -> Unit,
+    onLoadHistory: (String) -> Unit,
     onBuyClick: (Stock) -> Unit,
     onSellClick: (Stock) -> Unit
 ) {
