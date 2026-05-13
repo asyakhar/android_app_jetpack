@@ -11,44 +11,53 @@ import kotlinx.coroutines.launch
 class BrokerViewModel : ViewModel() {
     val api = ApiClient()
 
-    // Состояния для UI
+
+    // Статус авторизации
     private val _isLoggedIn = MutableStateFlow(false)
     val isLoggedIn = _isLoggedIn.asStateFlow()
 
+    // Имя текущего пользователя
     private val _username = MutableStateFlow("")
     val username = _username.asStateFlow()
 
+    // Баланс счета пользователя
     private val _balance = MutableStateFlow(0.0)
     val balance = _balance.asStateFlow()
 
+    // Список всех акций с биржи
     private val _stocks = MutableStateFlow<List<Stock>>(emptyList())
     val stocks = _stocks.asStateFlow()
 
+    // Портфель пользователя (какие акции и в каком количестве)
     private val _portfolio = MutableStateFlow<List<PortfolioItem>>(emptyList())
     val portfolio = _portfolio.asStateFlow()
 
+    // История цен для графиков (ключ - символ акции, значение - список свечей)
     private val _stockHistory = MutableStateFlow<Map<String, List<PriceHistoryCandle>>>(emptyMap())
     val stockHistory = _stockHistory.asStateFlow()
 
-    fun login(user: String, pass: String) {
-        viewModelScope.launch {
-            try {
-                api.login(LoginRequest(user, pass))
-                _isLoggedIn.value = true
-                _username.value = user
 
-                loadData()
-                startWebSocket()
+    // Вход в аккаунт
+    fun login(user: String, pass: String) {
+        viewModelScope.launch {  // Запускаем в корутине
+            try {
+                api.login(LoginRequest(user, pass))  // Отправляем запрос на сервер
+                _isLoggedIn.value = true              // Обновляем статус
+                _username.value = user                // Сохраняем имя
+
+                loadData()      // Загружаем данные пользователя
+                startWebSocket() // Подключаем WebSocket для живых цен
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.printStackTrace()  // Логируем ошибку
             }
         }
     }
 
+    // Регистрация нового пользователя
     fun register(username: String, email: String, password: String) {
         viewModelScope.launch {
             try {
-                api.register(username, email, password)
+                api.register(username, email, password)  // Отправляем запрос на сервер
                 _isLoggedIn.value = true
                 _username.value = username
                 loadData()
@@ -59,76 +68,62 @@ class BrokerViewModel : ViewModel() {
         }
     }
 
+    // Загрузка всех данных (акции, портфель, баланс)
     fun loadData() {
         viewModelScope.launch {
             try {
-                _stocks.value = api.getStocks()
-                _portfolio.value = api.getPortfolio()
-                _balance.value = api.getBalance()
+                _stocks.value = api.getStocks()        // Загружаем список акций
+                _portfolio.value = api.getPortfolio()  // Загружаем портфель
+                _balance.value = api.getBalance()      // Загружаем баланс
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
+    // Покупка акции
     fun buyStock(stock: Stock) {
         viewModelScope.launch {
             try {
-                api.executeTrade(TradeRequest(stock.symbol, 1, "buy"))
-                loadData()
+                api.executeTrade(TradeRequest(stock.symbol, 1, "buy"))  // Отправляем запрос на покупку
+                loadData()  // Обновляем данные после покупки
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
+    // Продажа акции
     fun sellStock(stock: Stock) {
         viewModelScope.launch {
             try {
-                api.executeTrade(TradeRequest(stock.symbol, 1, "sell"))
-                loadData()
+                api.executeTrade(TradeRequest(stock.symbol, 1, "sell"))  // Отправляем запрос на продажу
+                loadData()  // Обновляем данные после продажи
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
     }
 
+    // Выход из аккаунта
     fun logout() {
+        // Сбрасываем все состояния
         _isLoggedIn.value = false
         _username.value = ""
         _stocks.value = emptyList()
         _portfolio.value = emptyList()
         _balance.value = 0.0
         _stockHistory.value = emptyMap()
-        api.authToken = null
+        api.authToken = null  // Удаляем токен авторизации
     }
 
-//    fun loadHistory(symbol: String, timeframe: ChartTimeframe = ChartTimeframe.DAY_1) {
-//        viewModelScope.launch {
-//            try {
-//                // Используем простой запрос без from/to
-//                val history = api.getStockHistorySimple(
-//                    symbol = symbol,
-//                    interval = timeframe.interval
-//                )
-//
-//                val currentMap = _stockHistory.value.toMutableMap()
-//                currentMap[symbol] = history
-//                _stockHistory.value = currentMap
-//
-//                println("✅ Загружено ${history.size} свечей для $symbol")
-//            } catch (e: Exception) {
-//                e.printStackTrace()
-//                println("❌ Ошибка загрузки истории для $symbol: ${e.message}")
-//            }
-//        }
-//    }
 
+    // Запуск WebSocket для получения цен в реальном времени
     private fun startWebSocket() {
         viewModelScope.launch {
             try {
-                api.observeLivePrices { update ->
-                    // 1. Обновляем цену в списке
+                api.observeLivePrices { update ->  // Подписываемся на обновления
+                    // Обновляем цену в списке акций
                     val currentStocks = _stocks.value.toMutableList()
                     val index = currentStocks.indexOfFirst { it.symbol == update.symbol }
                     if (index != -1) {
@@ -136,7 +131,7 @@ class BrokerViewModel : ViewModel() {
                         _stocks.value = currentStocks
                     }
 
-                    // 2. Обновляем последнюю свечу в истории
+                    // Обновляем последнюю свечу в истории для графика
                     updateLastCandle(update.symbol, update.price)
                 }
             } catch (e: Exception) {
@@ -145,32 +140,37 @@ class BrokerViewModel : ViewModel() {
         }
     }
 
+    // Обновление последней свечи в истории (для отображения на графике)
     private fun updateLastCandle(symbol: String, newPrice: Double) {
         val currentMap = _stockHistory.value.toMutableMap()
         val currentHistory = currentMap[symbol]?.toMutableList() ?: return
         if (currentHistory.isEmpty()) return
 
+        // Берем последнюю свечу и обновляем ее значения
         val lastCandle = currentHistory.last()
         val updatedCandle = lastCandle.copy(
-            high = maxOf(lastCandle.high, newPrice),
-            low = minOf(lastCandle.low, newPrice),
-            close = newPrice,
-            volume = lastCandle.volume + 1
+            high = maxOf(lastCandle.high, newPrice),    // Максимальная цена за период
+            low = minOf(lastCandle.low, newPrice),      // Минимальная цена за период
+            close = newPrice,                           // Текущая цена
+            volume = lastCandle.volume + 1              // Увеличиваем объем
         )
 
         currentHistory[currentHistory.size - 1] = updatedCandle
         currentMap[symbol] = currentHistory
         _stockHistory.value = currentMap
     }
+
+    // Загрузка истории цен для графика (вызывается при раскрытии карточки акции)
     fun loadHistory(symbol: String) {
         viewModelScope.launch {
             try {
-                val history = api.getStockHistoryMinute(symbol)
+                val history = api.getStockHistoryMinute(symbol)  // Запрашиваем историю с сервера
 
                 val currentMap = _stockHistory.value.toMutableMap()
                 currentMap[symbol] = history
                 _stockHistory.value = currentMap
 
+                // Логируем результат для отладки
                 println("✅ Загружено ${history.size} свечей для $symbol")
 
                 if (history.isNotEmpty()) {

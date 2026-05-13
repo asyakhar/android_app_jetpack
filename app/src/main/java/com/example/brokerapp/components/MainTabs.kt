@@ -21,22 +21,25 @@ import com.example.brokerapp.screens.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainTabs(
-    username: String,
-    selectedTab: Int,
-    onTabSelected: (Int) -> Unit,
-    onLogoutClick: () -> Unit,
-    stocks: List<Stock>,
-    balance: Double,
-    portfolio: List<PortfolioItem>,
-    stockHistory: Map<String, List<com.example.brokerapp.models.PriceHistoryCandle>>,
-    onLoadHistory: (String) -> Unit,
-    onBuyClick: (Stock) -> Unit,
-    onSellClick: (Stock) -> Unit
+    username: String,                           // Имя пользователя
+    selectedTab: Int,                           // Выбранная вкладка: 0-Рынок, 1-Портфель, 2-Профиль
+    onTabSelected: (Int) -> Unit,               // Обработчик переключения вкладок
+    onLogoutClick: () -> Unit,                  // Обработчик выхода из аккаунта
+    stocks: List<Stock>,                        // Список акций с биржи
+    balance: Double,                            // Баланс счета пользователя
+    portfolio: List<PortfolioItem>,             // Портфель пользователя
+    stockHistory: Map<String, List<com.example.brokerapp.models.PriceHistoryCandle>>, // История цен для графиков
+    onLoadHistory: (String) -> Unit,            // Загрузка истории по символу акции
+    onBuyClick: (Stock) -> Unit,                // Покупка акции
+    onSellClick: (Stock) -> Unit                // Продажа акции
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
+
+        // Верхняя панель с аватаром и кнопкой выхода
         TopAppBar(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Круглый аватар с первой буквой имени
                     Box(
                         modifier = Modifier
                             .size(36.dp)
@@ -52,6 +55,7 @@ fun MainTabs(
                         )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
+                    // Имя пользователя и подпись
                     Column {
                         Text(username, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                         Text("Аккаунт", fontSize = 11.sp, color = Color.Gray)
@@ -59,6 +63,7 @@ fun MainTabs(
                 }
             },
             actions = {
+                // Кнопка выхода
                 IconButton(onClick = onLogoutClick) {
                     Icon(Icons.Default.ExitToApp, contentDescription = "Выход")
                 }
@@ -69,10 +74,12 @@ fun MainTabs(
             )
         )
 
+        // Нижняя навигационная панель (три вкладки)
         NavigationBar(
             containerColor = MaterialTheme.colorScheme.surface,
             tonalElevation = 0.dp
         ) {
+            // Вкладка "Рынок"
             NavigationBarItem(
                 icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
                 label = { Text("Рынок") },
@@ -85,6 +92,7 @@ fun MainTabs(
                     unselectedTextColor = Color.Gray
                 )
             )
+            // Вкладка "Портфель"
             NavigationBarItem(
                 icon = { Icon(Icons.Default.AccountBox, contentDescription = null) },
                 label = { Text("Портфель") },
@@ -97,6 +105,7 @@ fun MainTabs(
                     unselectedTextColor = Color.Gray
                 )
             )
+            // Вкладка "Профиль"
             NavigationBarItem(
                 icon = { Icon(Icons.Default.Person, contentDescription = null) },
                 label = { Text("Профиль") },
@@ -111,10 +120,11 @@ fun MainTabs(
             )
         }
 
+        // Отображение контента в зависимости от выбранной вкладки
         when (selectedTab) {
-            0 -> MarketScreen(stocks, balance, portfolio, stockHistory, onLoadHistory, onBuyClick, onSellClick)
-            1 -> PortfolioScreen(username, portfolio)
-            2 -> ProfileScreen(username, onLogoutClick)
+            0 -> MarketScreen(stocks, balance, portfolio, stockHistory, onLoadHistory, onBuyClick, onSellClick)  // Рынок
+            1 -> PortfolioScreen(username, portfolio)  // Портфель
+            2 -> ProfileScreen(username, onLogoutClick)  // Профиль
         }
     }
 }

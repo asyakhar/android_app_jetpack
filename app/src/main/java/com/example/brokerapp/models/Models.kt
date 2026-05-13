@@ -13,8 +13,8 @@ data class LoginResponse(val token: String, val tokenType: String = "Bearer", va
 data class Stock(
     val symbol: String,
     val name: String,
-    val price: Double, // Изменили на val
-    val changePercent: Double // Изменили на val
+    val price: Double,
+    val changePercent: Double
 )
 
 @Serializable
@@ -36,11 +36,10 @@ data class AccountResponse(val balance: Double, val availableBalance: Double? = 
 @Serializable
 data class TradeRequest(val symbol: String, val quantity: Int, val tradeType: String, val orderType: String = "market")
 
-// --- НОВЫЕ КЛАССЫ ДЛЯ WEBSOCKET ---
 @Serializable
 data class WsMessage(
     val type: String,
-    val data: JsonElement, // Оставляем сырой JSON, чтобы парсить в зависимости от type
+    val data: JsonElement,
     val timestamp: String
 )
 
@@ -48,10 +47,10 @@ data class WsMessage(
 data class PriceUpdate(
     val symbol: String,
     val price: Double,
-    val change: Double? = null,        // опционально
-    val changePercent: Double? = null, // опционально
-    val volume: Long? = null,          // опционально
-    val timestamp: String? = null      // опционально
+    val change: Double? = null,
+    val changePercent: Double? = null,
+    val volume: Long? = null,
+    val timestamp: String? = null
 )
 
 @Serializable
@@ -79,13 +78,9 @@ enum class ChartInterval(val value: String, val label: String, val minutes: Long
 }
 
 enum class ChartTimeframe(val label: String, val durationMillis: Long, val interval: String) {
-    MINUTE_1("1м", 60 * 60 * 1000L, "1m");  // только 1 минута
+    MINUTE_1("1м", 60 * 60 * 1000L, "1m");
 
-    // Временно закомментируем остальные
-    // HOUR_1("1Ч", 60 * 60 * 1000L, "5m"),
-    // DAY_1("1Д", 24 * 60 * 60 * 1000L, "15m"),
-    // WEEK_1("1Н", 7 * 24 * 60 * 60 * 1000L, "1h"),
-    // MONTH_1("1М", 30L * 24 * 60 * 60 * 1000L, "1d")
+
 }
 
 @Serializable

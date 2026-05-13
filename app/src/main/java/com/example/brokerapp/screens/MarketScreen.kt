@@ -131,16 +131,15 @@ fun ModernStockCard(
     onSellClick: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var selectedRange by remember { mutableStateOf("1ч") } // текущий выбранный диапазон
+    var selectedRange by remember { mutableStateOf("1ч") }
     val changeColor = if (stock.changePercent >= 0) Color(0xFF00C853) else Color(0xFFD32F2F)
 
-    // Функция для обрезки истории в зависимости от выбранного диапазона
     fun getFilteredHistory(): List<PriceHistoryCandle>? {
         val fullHistory = history ?: return null
         return when (selectedRange) {
-            "1ч" -> fullHistory.takeLast(40)      // последние 60 свечей (1 час)
-            "6ч" -> fullHistory.takeLast(100)     // последние 360 свечей (6 часов)
-            "1д" -> fullHistory                   // все свечи (за сутки)
+            "1ч" -> fullHistory.takeLast(40)
+            "6ч" -> fullHistory.takeLast(100)
+            "1д" -> fullHistory
             else -> fullHistory.takeLast(60)
         }
     }
@@ -157,7 +156,6 @@ fun ModernStockCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            // Верхняя часть карточки (символ, цена и т.д.)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -210,7 +208,6 @@ fun ModernStockCard(
                 }
             }
 
-            // Раскрывающаяся часть
             androidx.compose.animation.AnimatedVisibility(
                 visible = expanded,
                 enter = androidx.compose.animation.fadeIn(),
@@ -221,7 +218,6 @@ fun ModernStockCard(
                     Divider(color = Color.Gray.copy(alpha = 0.2f))
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 🔥 СЕЛЕКТОР МАСШТАБА (добавлен сюда)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -254,7 +250,6 @@ fun ModernStockCard(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Кнопки Купить/Продать
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -290,7 +285,6 @@ fun ModernStockCard(
     }
 }
 
-// 🔥 ДОБАВЬ ЭТОТ КОМПОНЕНТ (кнопка масштаба)
 @Composable
 fun ScaleButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
     Button(

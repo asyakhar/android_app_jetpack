@@ -37,7 +37,6 @@ class ApiClient {
         authToken?.let { header(HttpHeaders.Authorization, "Bearer $it") }
     }
 
-    // ========== MOCK-ДАННЫЕ ==========
 
     private fun getMockStocks(): List<Stock> {
         return listOf(
@@ -95,7 +94,6 @@ class ApiClient {
         return history
     }
 
-    // ========== РЕАЛЬНЫЕ МЕТОДЫ С MOCK-РЕЖИМОМ ==========
 
     suspend fun login(request: LoginRequest): LoginResponse {
         if (isMockMode) {

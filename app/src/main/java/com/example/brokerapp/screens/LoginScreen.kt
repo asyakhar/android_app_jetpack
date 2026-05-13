@@ -18,13 +18,14 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun LoginScreen(
-    username: String,
-    password: String,
-    onUsernameChange: (String) -> Unit,
-    onPasswordChange: (String) -> Unit,
-    onLoginClick: () -> Unit,
-    onSwitchToRegister: () -> Unit   // ← НОВЫЙ ПАРАМЕТР
+    username: String,                           // Введенный логин
+    password: String,                           // Введенный пароль
+    onUsernameChange: (String) -> Unit,         // Обработчик изменения логина
+    onPasswordChange: (String) -> Unit,         // Обработчик изменения пароля
+    onLoginClick: () -> Unit,                   // Обработчик нажатия кнопки "Войти"
+    onSwitchToRegister: () -> Unit              // Переход на экран регистрации
 ) {
+    // Градиентный фон экрана
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -37,6 +38,7 @@ fun LoginScreen(
                 )
             )
     ) {
+        // Центрируем содержимое по вертикали и горизонтали
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -44,6 +46,7 @@ fun LoginScreen(
                 .fillMaxSize()
                 .padding(24.dp)
         ) {
+            // Белая карточка с формой входа
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -52,12 +55,14 @@ fun LoginScreen(
                 ),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
+                // Внутреннее содержимое карточки
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    // Заголовок приложения
                     Text(
                         "Stocky",
                         fontSize = 34.sp,
@@ -68,6 +73,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    // Подзаголовок
                     Text(
                         "Вход в терминал",
                         fontSize = 14.sp,
@@ -76,6 +82,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
+                    // Поле ввода логина
                     OutlinedTextField(
                         value = username,
                         onValueChange = onUsernameChange,
@@ -88,12 +95,13 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Поле ввода пароля (скрывает символы)
                     OutlinedTextField(
                         value = password,
                         onValueChange = onPasswordChange,
                         label = { Text("Пароль") },
                         leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                        visualTransformation = PasswordVisualTransformation(),
+                        visualTransformation = PasswordVisualTransformation(), // Скрывает вводимые символы
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
@@ -101,6 +109,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
+                    // Кнопка входа
                     Button(
                         onClick = onLoginClick,
                         modifier = Modifier
@@ -114,13 +123,12 @@ fun LoginScreen(
                         Text("Войти", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                     }
 
-                    // ↓↓↓ ВОТ СЮДА — после кнопки "Войти", внутри Card ↓↓↓
                     Spacer(modifier = Modifier.height(16.dp))
 
+                    // Кнопка перехода к регистрации
                     TextButton(onClick = onSwitchToRegister) {
                         Text("Нет аккаунта? Зарегистрироваться", color = MaterialTheme.colorScheme.primary)
                     }
-                    // ↑↑↑ КОНЕЦ ДОБАВЛЕННОГО БЛОКА ↑↑↑
                 }
             }
         }
