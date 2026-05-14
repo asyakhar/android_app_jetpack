@@ -72,9 +72,12 @@ class BrokerViewModel : ViewModel() {
     fun loadData() {
         viewModelScope.launch {
             try {
-                _stocks.value = api.getStocks()        // Загружаем список акций
-                _portfolio.value = api.getPortfolio()  // Загружаем портфель
-                _balance.value = api.getBalance()      // Загружаем баланс
+                val allStocks = api.getStocks()
+                val allowedSymbols = listOf("AAPL", "AMZN", "MSFT", "GOOGL", "TSLA")
+                _stocks.value = allStocks.filter { it.symbol in allowedSymbols }
+
+                _portfolio.value = api.getPortfolio()
+                _balance.value = api.getBalance()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
